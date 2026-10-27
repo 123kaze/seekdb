@@ -55,15 +55,43 @@ namespace observer
 inline int ObPSAnalysisChecker::detection(const int64_t len)
 {
   int ret = OB_SUCCESS;
-  if (!need_check_) {
-  } else if (*pos_ + len > end_pos_) {
+  if (OB_ISNULL(pos_) || OB_ISNULL(*pos_) || OB_ISNULL(begin_pos_)
+      || OB_UNLIKELY(len < 0 || *pos_ < begin_pos_ || *pos_ > end_pos_
+                     || len > end_pos_ - *pos_)) {
     ret = OB_ERR_MALFORMED_PS_PACKET;
     LOG_USER_ERROR(OB_ERR_MALFORMED_PS_PACKET);
     LOG_ERROR("malformed ps data packet, please check the number and content of data packet parameters", K(ret), KP(pos_), KP(begin_pos_),
-    K(end_pos_ - begin_pos_), K(len), K(data_len_), K(remain_len()));
+    K(len), K(data_len_));
   }
   return ret;
 }
+
+namespace
+{
+int read_checked_length(const char *&data, uint64_t &length,
+                        ObPSAnalysisChecker *checker)
+{
+  int ret = OB_SUCCESS;
+  if (OB_NOT_NULL(checker) && OB_FAIL(checker->detection(1))) {
+  } else {
+    const uint8_t marker = static_cast<uint8_t>(*data);
+    const int64_t prefix_length = marker == 252 ? 3 : marker == 253 ? 4 : marker == 254 ? 9 : 1;
+    if (OB_NOT_NULL(checker) && OB_FAIL(checker->detection(prefix_length))) {
+    } else if (marker == 254) {
+      // The legacy get_length helper truncates this form to its low 32 bits.
+      // Decode the complete wire length before comparing it with the packet.
+      ++data;
+      uint32_t low = 0;
+      uint32_t high = 0;
+      ObMySQLUtil::get_uint4(data, low);
+      ObMySQLUtil::get_uint4(data, high);
+      length = (static_cast<uint64_t>(high) << 32) | low;
+    } else if (OB_FAIL(ObMySQLUtil::get_length(data, length))) {
+    }
+  }
+  return ret;
+}
+} // namespace
 
 void ObPsSessionInfoParamsCleaner::operator()(
     common::hash::HashMapPair<uint64_t, ObPsSessionInfo *> &entry) {
@@ -726,19 +754,6 @@ int ObMPStmtExecute::parse_request_param_value(ObIAllocator &alloc,
   return ret;
 }
 
-bool ObMPStmtExecute::is_contain_complex_element(const sql::ParamTypeArray &param_types) const
-{
-  bool b_ret = false;
-  for (int64_t i = 0; i < param_types.count(); i++) {
-    const obmysql::EMySQLFieldType field_type = param_types.at(i);
-    if (MYSQL_TYPE_COMPLEX == field_type) {
-      b_ret = true;
-      break;
-    }
-  }
-  return b_ret;
-}
-
 int ObMPStmtExecute::set_standard_timestamp_param(
     const EMySQLFieldType field_type, const uint16_t year, const uint8_t month,
     const uint8_t day, const uint8_t hour, const uint8_t minute,
@@ -1289,9 +1304,6 @@ int ObMPStmtExecute::request_params(ObSQLSessionInfo *session,
                   param_types, param_type_flags, param_type_infos))) {
           }
         }
-        if (OB_SUCC(ret) && is_contain_complex_element(param_types)) {
-          analysis_checker_.need_check_ = false;
-        }
       }
       if (OB_SUCC(ret) && is_arraybinding_) {
         OZ (check_param_type_for_arraybinding(param_type_infos));
@@ -1334,7 +1346,7 @@ int ObMPStmtExecute::decode_type_info(const char*& buf, TypeInfo &type_info)
   PS_DEFENSE_CHECK(1) // check first byte
   {
     uint64_t length = 0;
-    if (OB_FAIL(ObMySQLUtil::get_length(buf, length))) {
+    if (OB_FAIL(read_checked_length(buf, length, &analysis_checker_))) {
     } else {
       PS_DEFENSE_CHECK(length)
       {
@@ -1347,7 +1359,7 @@ int ObMPStmtExecute::decode_type_info(const char*& buf, TypeInfo &type_info)
   {
     uint64_t length = 0;
     if (OB_FAIL(ret)) {
-    } else if (OB_FAIL(ObMySQLUtil::get_length(buf, length))) {
+    } else if (OB_FAIL(read_checked_length(buf, length, &analysis_checker_))) {
     } else {
       PS_DEFENSE_CHECK(length)
       {
@@ -1360,7 +1372,7 @@ int ObMPStmtExecute::decode_type_info(const char*& buf, TypeInfo &type_info)
   {
     uint64_t version = 0;
     if (OB_FAIL(ret)) {
-    } else if (OB_FAIL(ObMySQLUtil::get_length(buf, version))) {
+    } else if (OB_FAIL(read_checked_length(buf, version, &analysis_checker_))) {
     }
   }
   return ret;
@@ -2186,8 +2198,7 @@ int ObMPStmtExecute::parse_basic_param_value(ObIAllocator &allocator,
       ObCollationType cur_cs_type = ObCharset::get_default_collation(charset);
       PS_STATIC_DEFENSE_CHECK(checker, 1)
       {
-        // check first byte of `length` field and trust the encoder reguarding the remaining bytes.
-        if (OB_FAIL(ObMySQLUtil::get_length(data, length))) {
+        if (OB_FAIL(read_checked_length(data, length, checker))) {
         }
         PS_STATIC_DEFENSE_CHECK(checker, length)
         {
@@ -2367,7 +2378,7 @@ int ObMPStmtExecute::parse_param_value(ObIAllocator &allocator,
         // 1. read count
         PS_DEFENSE_CHECK(1)
         {
-          if (OB_FAIL(ObMySQLUtil::get_length(data, count))) {
+          if (OB_FAIL(read_checked_length(data, count, &analysis_checker_))) {
           }
         }
         // 2. make null map
