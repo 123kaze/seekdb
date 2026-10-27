@@ -119,26 +119,40 @@ C++ 库从 `//bazel:defs.bzl` 加载 `cc_library`、`unity_cc_library` 或 `grou
 
 ## 运行本地实例
 
-使用仓库中的 `obd.sh` 包装脚本准备隔离环境并启动 seekdb：
+在 Linux 和 macOS 上，使用仓库中的实例管理脚本启动编译产物：
 
 ```bash
-./tools/deploy/obd.sh prepare -p /tmp/obtest
-./tools/deploy/obd.sh deploy -c ./tools/deploy/single.yaml
+python3 tools/deploy/sdb.py start \
+  --binary build/bin/src/observer/seekdb \
+  --base-dir "$PWD/build/dev-instance" --port 2881
+python3 tools/deploy/sdb.py wait-ready \
+  --client deps/3rd/u01/obclient/bin/obclient \
+  --base-dir "$PWD/build/dev-instance" --port 2881
 ```
 
-从 `tools/deploy/single.yaml` 读取 `mysql_port`。如果生成的端口是 `10000`，可以使用以下任一客户端连接：
+脚本直接启动 seekdb，新数据目录会自动初始化。需要调整服务端参数时，向 `start` 传入一个或多个 `--parameter key=value`。`start` 在创建进程后返回；`wait-ready` 检查受管理的进程，并等待 `SELECT 1` 执行成功。
+
+使用以下任一客户端连接：
 
 ```bash
-mysql -h127.0.0.1 -P10000 -uroot
-./deps/3rd/u01/obclient/bin/obclient -h127.0.0.1 -P10000 -uroot -Doceanbase -A
+mysql -h127.0.0.1 -P2881 -uroot
+./deps/3rd/u01/obclient/bin/obclient -h127.0.0.1 -P2881 -uroot -Doceanbase -A
 ```
 
-如果生成了其他端口，应以文件中的实际值为准。
+需要前台运行时，包括在 Windows 上，可以直接执行二进制，传入 `--nodaemon --base-dir=<目录> --port=2881`。Python 实例管理脚本目前支持 Linux 和 macOS。
 
-## 停止并清理本地实例
+## 停止或清理本地实例
+
+停止实例并保留数据：
 
 ```bash
-./tools/deploy/obd.sh destroy --rm -n single
+python3 tools/deploy/sdb.py stop --base-dir "$PWD/build/dev-instance"
 ```
 
-该命令会停止实例并删除此示例创建的部署数据。不要对需要保留的数据执行该命令。
+再次执行相同的 `start` 和 `wait-ready` 命令即可重启。需要停止实例并删除本例创建的数据时，执行：
+
+```bash
+python3 tools/deploy/sdb.py destroy --base-dir "$PWD/build/dev-instance"
+```
+
+`destroy` 会删除整个受管理的实例目录，只能用于无需保留的数据。SQL 回归测试使用独立的临时实例，见[运行 mysqltest](mysqltest.md)。

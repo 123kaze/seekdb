@@ -117,26 +117,40 @@ Build the affected target with `./build.py build //package:target`. Existing mod
 
 ## Run a local instance
 
-Prepare an isolated deployment and start seekdb through the repository's `obd.sh` wrapper:
+On Linux and macOS, start the compiled binary with the repository's instance helper:
 
 ```bash
-./tools/deploy/obd.sh prepare -p /tmp/obtest
-./tools/deploy/obd.sh deploy -c ./tools/deploy/single.yaml
+python3 tools/deploy/sdb.py start \
+  --binary build/bin/src/observer/seekdb \
+  --base-dir "$PWD/build/dev-instance" --port 2881
+python3 tools/deploy/sdb.py wait-ready \
+  --client deps/3rd/u01/obclient/bin/obclient \
+  --base-dir "$PWD/build/dev-instance" --port 2881
 ```
 
-Read `mysql_port` from `tools/deploy/single.yaml`. When the generated port is `10000`, connect with either client:
+The helper starts seekdb directly. A new data directory initializes automatically. Pass repeated `--parameter key=value` options to `start` when you need server settings. `start` returns after spawning the process; `wait-ready` checks the managed process and waits for `SELECT 1` to succeed.
+
+Connect with either client:
 
 ```bash
-mysql -h127.0.0.1 -P10000 -uroot
-./deps/3rd/u01/obclient/bin/obclient -h127.0.0.1 -P10000 -uroot -Doceanbase -A
+mysql -h127.0.0.1 -P2881 -uroot
+./deps/3rd/u01/obclient/bin/obclient -h127.0.0.1 -P2881 -uroot -Doceanbase -A
 ```
 
-Use the actual generated port if it differs.
+To run in the foreground, including on Windows, invoke the binary directly with `--nodaemon --base-dir=<directory> --port=2881`. The Python instance helper currently supports Linux and macOS.
 
-## Stop and remove the local deployment
+## Stop or remove the local instance
+
+Stop the instance and keep its data:
 
 ```bash
-./tools/deploy/obd.sh destroy --rm -n single
+python3 tools/deploy/sdb.py stop --base-dir "$PWD/build/dev-instance"
 ```
 
-This command stops the local instance and removes the deployment data created by this example. Do not point it at data that must be retained.
+Run the same `start` and `wait-ready` commands to restart it. To stop it and delete this example's data instead:
+
+```bash
+python3 tools/deploy/sdb.py destroy --base-dir "$PWD/build/dev-instance"
+```
+
+`destroy` removes the entire managed instance directory. Only use it for disposable data. See [Running mysqltest](mysqltest.md) for SQL regression tests with a separate disposable instance.
