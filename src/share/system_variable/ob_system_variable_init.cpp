@@ -1453,7 +1453,7 @@ static struct VarsInit{
 
     [&] (){
       ObSysVars[95].default_value_ = "8000000" ;
-      ObSysVars[95].info_ = "The maximum available memory in bytes for the internal stack used for regular expression matching operations" ;
+      ObSysVars[95].info_ = "Regular expression compiled-program and per-delegate DFA byte budget (legacy name); zero uses 8 MiB, capped at 64 MiB; not a VM stack or total-memory limit" ;
       ObSysVars[95].name_ = "regexp_stack_limit" ;
       ObSysVars[95].data_type_ = ObIntType ;
       ObSysVars[95].min_val_ = "0" ;
@@ -1468,7 +1468,7 @@ static struct VarsInit{
 
     [&] (){
       ObSysVars[96].default_value_ = "32" ;
-      ObSysVars[96].info_ = "The time limit for regular expression matching operations, default unit is milliseconds" ;
+      ObSysVars[96].info_ = "Regular expression backtracking budget (legacy name): value times 10000 attempts, capped at 100000000; zero uses 1000000; not a millisecond timeout" ;
       ObSysVars[96].name_ = "regexp_time_limit" ;
       ObSysVars[96].data_type_ = ObIntType ;
       ObSysVars[96].min_val_ = "0" ;

@@ -982,7 +982,6 @@ psmall_test += [
 'pl.pl_bug_56141233_mysql',
 'expr.expr_mid_mysql',
 'expr.conv',
-'expr.expr_icu_version',
 'mysql8_t_2.grant_dynamic_bugs',
 'expr.func_in_3',
 'expr.sys_func_interval',
