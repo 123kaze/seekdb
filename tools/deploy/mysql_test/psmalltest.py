@@ -933,7 +933,6 @@ psmall_test += [
 'ps_text.ps_bugs_mysql',
 'join.join_cache_1',
 'inner_table.all_virtual_plan_cache_stat',
-'inner_table.all_virtual_concurrency_object_pool',
 'inner_table.all_virtual_monitor_table',
 'inner_table.information_schema_show_create_in_sys_and_normal_tenant',
 'inner_table.all_virtual_sql_plan_statistics',

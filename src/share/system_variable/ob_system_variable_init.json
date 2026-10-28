@@ -257,7 +257,6 @@
     "default_value": "281018368",
     "base_value": "12582912",
     "data_type": "uint",
-    "on_update_func": "ObSysVarOnUpdateFuncs::update_sql_mode",
     "on_check_and_convert_func": "ObSysVarOnCheckFuncs::check_and_convert_sql_mode",
     "get_meta_type_func": "ObSysVarGetMetaTypeFuncs::get_meta_type_varchar",
     "to_select_obj_func": "ObSysVarToObjFuncs::to_obj_sql_mode",
@@ -10935,6 +10934,7 @@
   },
   "ob_hnsw_extra_info_max_size": {
     "id": 10751,
+    "placeholder": true,
     "name": "ob_hnsw_extra_info_max_size",
     "default_value": "1024",
     "base_value": "1024",
