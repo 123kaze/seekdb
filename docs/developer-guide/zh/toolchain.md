@@ -4,7 +4,9 @@ seekdb 使用 Bazel、Rust 以及仓库管理的编译器和依赖集合。先�
 
 ## Rust
 
-`./build.py init` 会在缺少 rustup 时安装它，再准备 `rust/rust-toolchain.toml` 声明的工具链、组件和目标。仓库固定使用 Rust `1.98.1`。首次编译及修改工具链配置后运行 `init`；下载和安装日志直接显示在终端中。`build` 阶段缺少工具链时会提示重新执行 `init`。
+`./build.py init` 会在缺少 rustup 时安装它，再准备 `rust-toolchain.toml` 声明的工具链、组件和目标。仓库固定使用 Rust `1.98.1`。首次编译及修改工具链配置后运行 `init`；下载和安装日志直接显示在终端中。`build` 阶段缺少工具链时会提示重新执行 `init`。
+
+原生 init 只要求宿主平台的 Rust 标准库和 clippy。Android、iOS 真机和 iOS 模拟器目标分别由对应的 init 参数按需安装；Windows GNU 的交叉检查目标由 CI 检查步骤显式安装。交叉目标与宿主工具链使用同一份版本固定配置。
 
 Rustup 下载默认使用 [RsProxy](https://rsproxy.cn/)。调用 `build.py` 前设置 `RUSTUP_DIST_SERVER` 或 `RUSTUP_UPDATE_ROOT` 可以覆盖默认源，`RUSTUP_INIT_URL` 可以指定 rustup 安装程序的 URL。这些默认值只作用于构建进程及其子进程，不修改 shell 配置，也不改变用户的默认 Rust 工具链。
 
